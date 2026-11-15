@@ -9,7 +9,6 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from database import get_connection
 
-# Set a strong secret in your environment before deployment.
 SECRET_KEY = os.getenv("GRIT_SECRET_KEY")
 
 if not SECRET_KEY:
@@ -24,17 +23,14 @@ password_hash = PasswordHash.recommended()
 bearer_scheme = HTTPBearer()
 
 
-# Hash a password before storing it
 def hash_password(password: str) -> str:
     return password_hash.hash(password)
 
 
-# Verify a password during login
 def verify_password(password: str, hashed_password: str) -> bool:
     return password_hash.verify(password, hashed_password)
 
 
-# Generate JWT access token
 def create_access_token(user_id: str, role: str):
     expiry = datetime.now(timezone.utc) + timedelta(
         minutes=ACCESS_TOKEN_MINUTES
@@ -49,7 +45,6 @@ def create_access_token(user_id: str, role: str):
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-# Verify JWT and retrieve user
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)
 ):
@@ -77,8 +72,11 @@ def get_current_user(
 
     try:
         user = connection.execute(
-            """SELECT id, name, email, role, active
-               FROM users WHERE id = ?""",
+            """
+            SELECT id, name, email, role, active
+            FROM users
+            WHERE id = %s
+            """,
             (user_id,)
         ).fetchone()
     finally:
@@ -90,7 +88,6 @@ def get_current_user(
     return dict(user)
 
 
-# Role-based access control
 def require_role(*allowed_roles):
     def role_checker(user=Depends(get_current_user)):
         if user["role"] not in allowed_roles:

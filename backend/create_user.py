@@ -1,7 +1,8 @@
 
 import getpass
-import sqlite3
 from uuid import uuid4
+
+import psycopg
 
 from database import get_connection, init_db
 from auth import hash_password
@@ -29,16 +30,15 @@ init_db()
 connection = get_connection()
 
 try:
-    # Link the login account to the existing record.
     if role == "student":
         linked = connection.execute(
-            "SELECT id, name FROM students WHERE email = ?",
+            "SELECT id, name FROM students WHERE email = %s",
             (email,)
         ).fetchone()
 
     elif role == "interviewer":
         linked = connection.execute(
-            "SELECT id, name FROM interviewers WHERE email = ?",
+            "SELECT id, name FROM interviewers WHERE email = %s",
             (email,)
         ).fetchone()
 
@@ -51,12 +51,18 @@ try:
             "Create that record first."
         )
 
-    user_id = linked["id"] if linked else "USR-" + uuid4().hex[:8].upper()
+    user_id = (
+        linked["id"]
+        if linked
+        else "USR-" + uuid4().hex[:8].upper()
+    )
 
     connection.execute(
-        """INSERT INTO users
-           (id, name, email, password_hash, role, active)
-           VALUES (?, ?, ?, ?, ?, 1)""",
+        """
+        INSERT INTO users
+        (id, name, email, password_hash, role, active)
+        VALUES (%s, %s, %s, %s, %s, 1)
+        """,
         (user_id, name, email, hash_password(password), role)
     )
 
@@ -66,7 +72,7 @@ try:
     print("User ID:", user_id)
     print("Role:", role)
 
-except sqlite3.IntegrityError:
+except psycopg.IntegrityError:
     connection.rollback()
     print("An account with this email or ID already exists.")
 

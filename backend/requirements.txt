@@ -1,4 +1,6 @@
+
 fastapi
 uvicorn[standard]
 PyJWT
 pwdlib[argon2]
+psycopg[binary]

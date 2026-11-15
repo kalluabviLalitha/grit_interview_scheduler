@@ -5,7 +5,8 @@ from pydantic import BaseModel
 from typing import Optional
 from database import get_connection, init_db
 from uuid import uuid4
-import sqlite3
+import psycopg
+
 from auth import (
     verify_password,
     create_access_token,
@@ -16,11 +17,9 @@ from auth import (
 app = FastAPI(
     title="GRIT Interview Scheduler",
     description="Student interview scheduling API",
-    version="1.1.0",
+    version="2.0.0",
 )
 
-# Development-only CORS configuration.
-# Restrict allow_origins before production deployment.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -52,8 +51,6 @@ class SlotInput(BaseModel):
 
 
 class BookingInput(BaseModel):
-    # Retained for compatibility with the current frontend.
-    # The API ignores this value and uses the authenticated user.
     student_id: Optional[str] = None
     slot_id: str
 
@@ -79,19 +76,7 @@ def fetch_all(query, params=()):
         connection.close()
 
 
-def get_booking_with_interviewer(connection, booking_id):
-    return connection.execute(
-        """
-        SELECT bookings.*, slots.interviewer_id
-        FROM bookings
-        JOIN slots ON bookings.slot_id = slots.id
-        WHERE bookings.id = ?
-        """,
-        (booking_id,),
-    ).fetchone()
-
-
-# ---------- Home ----------
+# ---------- Home and health ----------
 
 @app.get("/")
 def home():
@@ -117,7 +102,7 @@ def create_student(
         connection.execute(
             """
             INSERT INTO students (id, name, email, eligible)
-            VALUES (?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s)
             """,
             (
                 student_id,
@@ -133,7 +118,8 @@ def create_student(
             "student_id": student_id,
         }
 
-    except sqlite3.IntegrityError:
+    except psycopg.IntegrityError:
+        connection.rollback()
         raise HTTPException(409, "Email already exists")
 
     finally:
@@ -159,7 +145,7 @@ def create_interviewer(
         connection.execute(
             """
             INSERT INTO interviewers (id, name, email)
-            VALUES (?, ?, ?)
+            VALUES (%s, %s, %s)
             """,
             (
                 interviewer_id,
@@ -174,7 +160,8 @@ def create_interviewer(
             "interviewer_id": interviewer_id,
         }
 
-    except sqlite3.IntegrityError:
+    except psycopg.IntegrityError:
+        connection.rollback()
         raise HTTPException(409, "Email already exists")
 
     finally:
@@ -205,7 +192,6 @@ def create_slot(
             "Duration must be 30, 45 or 60 minutes",
         )
 
-    # Interviewers can create slots only for themselves.
     if (
         user["role"] == "interviewer"
         and data.interviewer_id != user["id"]
@@ -218,7 +204,7 @@ def create_slot(
     connection = get_connection()
     try:
         interviewer = connection.execute(
-            "SELECT id FROM interviewers WHERE id = ?",
+            "SELECT id FROM interviewers WHERE id = %s",
             (data.interviewer_id,),
         ).fetchone()
 
@@ -231,7 +217,7 @@ def create_slot(
             """
             INSERT INTO slots
             (id, interviewer_id, start_at, duration)
-            VALUES (?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s)
             """,
             (
                 slot_id,
@@ -247,7 +233,8 @@ def create_slot(
             "slot_id": slot_id,
         }
 
-    except sqlite3.IntegrityError:
+    except psycopg.IntegrityError:
+        connection.rollback()
         raise HTTPException(409, "Slot already exists")
 
     finally:
@@ -282,8 +269,8 @@ def get_slots(
                 FROM slots
                 JOIN interviewers
                     ON slots.interviewer_id = interviewers.id
-                WHERE slots.interviewer_id = ?
-                  AND slots.status = ?
+                WHERE slots.interviewer_id = %s
+                  AND slots.status = %s
                 ORDER BY slots.start_at
                 """,
                 (user["id"], status),
@@ -297,7 +284,7 @@ def get_slots(
                 FROM slots
                 JOIN interviewers
                     ON slots.interviewer_id = interviewers.id
-                WHERE slots.status = ?
+                WHERE slots.status = %s
                 ORDER BY slots.start_at
                 """,
                 (status,),
@@ -339,85 +326,87 @@ def create_booking(
     data: BookingInput,
     user=Depends(require_role("student")),
 ):
-    # Never trust a student ID supplied by the browser.
     student_id = user["id"]
-
     connection = get_connection()
 
     try:
-        connection.execute("BEGIN IMMEDIATE")
+        with connection.transaction():
+            student = connection.execute(
+                """
+                SELECT * FROM students
+                WHERE id = %s
+                """,
+                (student_id,),
+            ).fetchone()
 
-        student = connection.execute(
-            "SELECT * FROM students WHERE id = ?",
-            (student_id,),
-        ).fetchone()
+            if not student:
+                raise HTTPException(
+                    404,
+                    "Student profile not found for this account",
+                )
 
-        if not student:
-            raise HTTPException(
-                404,
-                "Student profile not found for this account",
+            if not student["eligible"]:
+                raise HTTPException(403, "Student is not eligible")
+
+            existing = connection.execute(
+                """
+                SELECT id FROM bookings
+                WHERE student_id = %s
+                  AND status = 'Booked'
+                """,
+                (student_id,),
+            ).fetchone()
+
+            if existing:
+                raise HTTPException(
+                    409,
+                    "Student already has an active booking",
+                )
+
+            slot = connection.execute(
+                """
+                SELECT * FROM slots
+                WHERE id = %s
+                FOR UPDATE
+                """,
+                (data.slot_id,),
+            ).fetchone()
+
+            if not slot:
+                raise HTTPException(404, "Slot not found")
+
+            if slot["status"] != "Open":
+                raise HTTPException(
+                    409,
+                    "Slot is no longer available",
+                )
+
+            booking_id = "BK-" + uuid4().hex[:8].upper()
+
+            connection.execute(
+                """
+                INSERT INTO bookings
+                (id, student_id, slot_id, status)
+                VALUES (%s, %s, %s, 'Booked')
+                """,
+                (booking_id, student_id, data.slot_id),
             )
 
-        if not student["eligible"]:
-            raise HTTPException(403, "Student is not eligible")
-
-        existing = connection.execute(
-            """
-            SELECT id FROM bookings
-            WHERE student_id = ?
-              AND status = 'Booked'
-            """,
-            (student_id,),
-        ).fetchone()
-
-        if existing:
-            raise HTTPException(
-                409,
-                "Student already has an active booking",
+            connection.execute(
+                """
+                UPDATE slots
+                SET status = 'Booked'
+                WHERE id = %s
+                """,
+                (data.slot_id,),
             )
-
-        slot = connection.execute(
-            "SELECT * FROM slots WHERE id = ?",
-            (data.slot_id,),
-        ).fetchone()
-
-        if not slot:
-            raise HTTPException(404, "Slot not found")
-
-        if slot["status"] != "Open":
-            raise HTTPException(
-                409,
-                "Slot is no longer available",
-            )
-
-        booking_id = "BK-" + uuid4().hex[:8].upper()
-
-        connection.execute(
-            """
-            INSERT INTO bookings
-            (id, student_id, slot_id, status)
-            VALUES (?, ?, ?, 'Booked')
-            """,
-            (booking_id, student_id, data.slot_id),
-        )
-
-        connection.execute(
-            "UPDATE slots SET status = 'Booked' WHERE id = ?",
-            (data.slot_id,),
-        )
-
-        connection.commit()
 
         return {
             "message": "Interview booked successfully",
             "booking_id": booking_id,
         }
 
-    except HTTPException:
-        connection.rollback()
-        raise
-
-    except sqlite3.IntegrityError:
+    except psycopg.IntegrityError:
         connection.rollback()
         raise HTTPException(
             409,
@@ -468,55 +457,53 @@ def cancel_booking(
     connection = get_connection()
 
     try:
-        connection.execute("BEGIN IMMEDIATE")
+        with connection.transaction():
+            booking = connection.execute(
+                """
+                SELECT * FROM bookings
+                WHERE id = %s
+                  AND status = 'Booked'
+                FOR UPDATE
+                """,
+                (booking_id,),
+            ).fetchone()
 
-        booking = connection.execute(
-            """
-            SELECT * FROM bookings
-            WHERE id = ?
-              AND status = 'Booked'
-            """,
-            (booking_id,),
-        ).fetchone()
+            if not booking:
+                raise HTTPException(
+                    404,
+                    "Active booking not found",
+                )
 
-        if not booking:
-            raise HTTPException(
-                404,
-                "Active booking not found",
+            if (
+                user["role"] == "student"
+                and booking["student_id"] != user["id"]
+            ):
+                raise HTTPException(
+                    403,
+                    "You can cancel only your own booking",
+                )
+
+            connection.execute(
+                """
+                UPDATE bookings
+                SET status = 'Cancelled'
+                WHERE id = %s
+                """,
+                (booking_id,),
             )
 
-        if (
-            user["role"] == "student"
-            and booking["student_id"] != user["id"]
-        ):
-            raise HTTPException(
-                403,
-                "You can cancel only your own booking",
+            connection.execute(
+                """
+                UPDATE slots
+                SET status = 'Open'
+                WHERE id = %s
+                """,
+                (booking["slot_id"],),
             )
-
-        connection.execute(
-            """
-            UPDATE bookings
-            SET status = 'Cancelled'
-            WHERE id = ?
-            """,
-            (booking_id,),
-        )
-
-        connection.execute(
-            "UPDATE slots SET status = 'Open' WHERE id = ?",
-            (booking["slot_id"],),
-        )
-
-        connection.commit()
 
         return {
             "message": "Booking cancelled successfully",
         }
-
-    except HTTPException:
-        connection.rollback()
-        raise
 
     finally:
         connection.close()
@@ -545,72 +532,66 @@ def record_result(
     connection = get_connection()
 
     try:
-        connection.execute("BEGIN IMMEDIATE")
+        with connection.transaction():
+            booking = connection.execute(
+                """
+                SELECT bookings.*,
+                       slots.interviewer_id
+                FROM bookings
+                JOIN slots
+                    ON bookings.slot_id = slots.id
+                WHERE bookings.id = %s
+                FOR UPDATE OF bookings
+                """,
+                (booking_id,),
+            ).fetchone()
 
-        booking = connection.execute(
-            """
-            SELECT bookings.*,
-                   slots.interviewer_id
-            FROM bookings
-            JOIN slots
-                ON bookings.slot_id = slots.id
-            WHERE bookings.id = ?
-            """,
-            (booking_id,),
-        ).fetchone()
+            if not booking or booking["status"] != "Booked":
+                raise HTTPException(
+                    404,
+                    "Active booking not found",
+                )
 
-        if not booking or booking["status"] != "Booked":
-            raise HTTPException(
-                404,
-                "Active booking not found",
+            if (
+                user["role"] == "interviewer"
+                and booking["interviewer_id"] != user["id"]
+            ):
+                raise HTTPException(
+                    403,
+                    "You can record results only for your assigned interviews",
+                )
+
+            result_id = "RES-" + uuid4().hex[:8].upper()
+
+            connection.execute(
+                """
+                INSERT INTO interview_results
+                (id, booking_id, result, feedback)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (
+                    result_id,
+                    booking_id,
+                    data.result,
+                    data.feedback,
+                ),
             )
 
-        if (
-            user["role"] == "interviewer"
-            and booking["interviewer_id"] != user["id"]
-        ):
-            raise HTTPException(
-                403,
-                "You can record results only for your assigned interviews",
+            connection.execute(
+                """
+                UPDATE bookings
+                SET status = 'Completed'
+                WHERE id = %s
+                """,
+                (booking_id,),
             )
-
-        result_id = "RES-" + uuid4().hex[:8].upper()
-
-        connection.execute(
-            """
-            INSERT INTO interview_results
-            (id, booking_id, result, feedback)
-            VALUES (?, ?, ?, ?)
-            """,
-            (
-                result_id,
-                booking_id,
-                data.result,
-                data.feedback,
-            ),
-        )
-
-        connection.execute(
-            """
-            UPDATE bookings
-            SET status = 'Completed'
-            WHERE id = ?
-            """,
-            (booking_id,),
-        )
-
-        connection.commit()
 
         return {
             "message": "Interview result saved",
             "result": data.result,
         }
 
-    except HTTPException:
-        connection.rollback()
-        raise
-
-    except sqlite3.IntegrityError:
+    except psycopg.IntegrityError:
         connection.rollback()
         raise HTTPException(
             409,
@@ -637,7 +618,7 @@ def login(data: LoginInput):
                    role,
                    active
             FROM users
-            WHERE email = ?
+            WHERE email = %s
             """,
             (data.email.lower().strip(),),
         ).fetchone()
@@ -738,7 +719,7 @@ def my_bookings(user=Depends(get_current_user)):
                     ON slots.interviewer_id = interviewers.id
                 LEFT JOIN interview_results
                     ON bookings.id = interview_results.booking_id
-                WHERE bookings.student_id = ?
+                WHERE bookings.student_id = %s
                 ORDER BY slots.start_at DESC
                 """,
                 (user["id"],),
@@ -761,7 +742,7 @@ def my_bookings(user=Depends(get_current_user)):
                     ON bookings.student_id = students.id
                 LEFT JOIN interview_results
                     ON bookings.id = interview_results.booking_id
-                WHERE slots.interviewer_id = ?
+                WHERE slots.interviewer_id = %s
                 ORDER BY slots.start_at DESC
                 """,
                 (user["id"],),
