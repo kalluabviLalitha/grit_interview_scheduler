@@ -1,0 +1,172 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GRIT | Dashboard</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f7fb;
+            color: #172033;
+        }
+
+        header {
+            background: #172554;
+            color: white;
+            padding: 20px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        main {
+            max-width: 1050px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 22px;
+            margin-bottom: 18px;
+            border-radius: 12px;
+            border: 1px solid #e5e9f2;
+        }
+
+        .muted { color: #667085; }
+
+        button {
+            padding: 10px 15px;
+            background: #3157d5;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px 8px;
+            text-align: left;
+            border-bottom: 1px solid #e5e9f2;
+        }
+
+        th { color: #667085; }
+
+        .table-wrap { overflow-x: auto; }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <div>
+        <strong>GRIT INTERVIEW PORTAL</strong>
+    </div>
+    <button onclick="logout()">Logout</button>
+</header>
+
+<main>
+
+    <div class="card">
+        <h1 id="welcome">Loading...</h1>
+        <p class="muted" id="userDetails"></p>
+    </div>
+
+    <div class="card">
+        <h2>My Interview Activity</h2>
+        <div id="bookings">Loading bookings...</div>
+    </div>
+
+</main>
+
+<script src="api.js"></script>
+
+<script>
+async function loadDashboard() {
+
+    if (!getToken()) {
+        window.location.href = "login.html";
+        return;
+    }
+
+    try {
+        const user = await getProfile();
+
+        document.getElementById("welcome").textContent =
+            "Welcome, " + user.name;
+
+        document.getElementById("userDetails").textContent =
+            user.email + " | " + user.role.toUpperCase();
+
+        const bookings = await getMyBookings();
+
+        const container = document.getElementById("bookings");
+
+        if (bookings.length === 0) {
+            container.textContent = "No interview records found.";
+            return;
+        }
+
+        const columns = user.role === "student"
+            ? ["booking_id", "start_at", "interviewer_name",
+               "status", "result"]
+            : user.role === "interviewer"
+            ? ["booking_id", "start_at", "student_name",
+               "status", "result"]
+            : ["booking_id", "start_at", "student_name",
+               "interviewer_name", "status", "result"];
+
+        const table = document.createElement("table");
+        const thead = document.createElement("thead");
+        const tbody = document.createElement("tbody");
+
+        const headingRow = document.createElement("tr");
+
+        columns.forEach(column => {
+            const th = document.createElement("th");
+            th.textContent = column.replaceAll("_", " ");
+            headingRow.appendChild(th);
+        });
+
+        thead.appendChild(headingRow);
+
+        bookings.forEach(booking => {
+            const tr = document.createElement("tr");
+
+            columns.forEach(column => {
+                const td = document.createElement("td");
+                td.textContent = booking[column] ?? "Pending";
+                tr.appendChild(td);
+            });
+
+            tbody.appendChild(tr);
+        });
+
+        table.append(thead, tbody);
+        container.replaceChildren(table);
+
+    } catch (error) {
+        if (!getToken()) {
+            window.location.href = "login.html";
+            return;
+        }
+
+        document.getElementById("bookings").textContent =
+            "Unable to load dashboard: " + error.message;
+    }
+}
+
+loadDashboard();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,511 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GRIT Student Dashboard</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background: #f3f5f9;
+            color: #263247;
+        }
+
+        header {
+            background: #172b4d;
+            color: white;
+            padding: 20px 7%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h2 {
+            margin: 0;
+        }
+
+        main {
+            max-width: 1100px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 22px;
+            margin-bottom: 22px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px #0000000d;
+        }
+
+        h3 {
+            margin-top: 0;
+            color: #172b4d;
+        }
+
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            background: #2563eb;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            opacity: 0.88;
+        }
+
+        .logout, .cancel {
+            background: #dc3545;
+        }
+
+        .profile-grid {
+            display: grid;
+            grid-template-columns:
+                repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+        }
+
+        .profile-item {
+            padding: 12px;
+            background: #f3f6fb;
+            border-radius: 6px;
+        }
+
+        .profile-item strong {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .slot, .booking {
+            border: 1px solid #e1e5ec;
+            padding: 15px;
+            margin: 12px 0;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .muted {
+            color: #667085;
+        }
+
+        .error {
+            color: #c62828;
+        }
+
+        .success {
+            color: #16803c;
+        }
+
+        .status {
+            font-weight: bold;
+        }
+
+        @media (max-width: 600px) {
+            header {
+                padding: 16px;
+            }
+
+            main {
+                padding: 0 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h2>GRIT Student Portal</h2>
+    <button class="logout" id="logoutButton">Logout</button>
+</header>
+
+<main>
+
+    <section class="card">
+        <h3>Student Profile</h3>
+        <div id="profile">Loading student profile...</div>
+    </section>
+
+    <section class="card">
+        <h3>Available Interview Slots</h3>
+        <p class="muted">
+            Choose an available slot to book your interview.
+        </p>
+        <div id="slots">Loading available slots...</div>
+    </section>
+
+    <section class="card">
+        <h3>My Booking History</h3>
+        <div id="bookings">Loading booking history...</div>
+    </section>
+
+    <p id="message"></p>
+
+</main>
+
+<script src="api.js"></script>
+
+<script>
+    // Use a unique name to avoid conflicts with api.js.
+    const STUDENT_API_BASE = "http://127.0.0.1:8000";
+
+    function getStudentToken() {
+        if (typeof getToken === "function") {
+            return getToken();
+        }
+
+        return null;
+    }
+
+    async function studentApi(endpoint, options = {}) {
+        const token = getStudentToken();
+
+        if (!token) {
+            window.location.href = "login.html";
+            throw new Error("Login session not found. Please log in again.");
+        }
+
+        const response = await fetch(
+            STUDENT_API_BASE + endpoint,
+            {
+                ...options,
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token,
+                    ...(options.headers || {})
+                }
+            }
+        );
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(
+                data.detail || "Server error: " + response.status
+            );
+        }
+
+        return data;
+    }
+
+    function escapeHTML(value) {
+        return String(value ?? "").replace(/[&<>"']/g, character => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+        })[character]);
+    }
+
+    function showMessage(message, type = "") {
+        const element = document.getElementById("message");
+        element.textContent = message;
+        element.className = type;
+    }
+
+    function formatDate(value) {
+        if (!value) return "Date unavailable";
+
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return value;
+        }
+
+        return date.toLocaleString();
+    }
+
+    // ---------- Student profile ----------
+
+    async function loadProfile() {
+        const element = document.getElementById("profile");
+
+        try {
+            const user = await studentApi("/auth/me");
+
+            if (user.role !== "student") {
+                throw new Error(
+                    "Please log in using your student account."
+                );
+            }
+
+            element.innerHTML = `
+                <div class="profile-grid">
+                    <div class="profile-item">
+                        <strong>Name</strong>
+                        ${escapeHTML(user.name)}
+                    </div>
+
+                    <div class="profile-item">
+                        <strong>Email</strong>
+                        ${escapeHTML(user.email)}
+                    </div>
+
+                    <div class="profile-item">
+                        <strong>Role</strong>
+                        ${escapeHTML(user.role)}
+                    </div>
+
+                    <div class="profile-item">
+                        <strong>Student ID</strong>
+                        ${escapeHTML(user.id)}
+                    </div>
+                </div>
+            `;
+
+        } catch (error) {
+            element.innerHTML =
+                `<p class="error">${escapeHTML(error.message)}</p>`;
+        }
+    }
+
+    // ---------- Available slots ----------
+
+    async function loadSlots() {
+        const element = document.getElementById("slots");
+
+        try {
+            const slots = await studentApi(
+                "/student/available-slots"
+            );
+
+            if (!Array.isArray(slots) || slots.length === 0) {
+                element.innerHTML =
+                    "<p>No available interview slots right now.</p>";
+                return;
+            }
+
+            element.innerHTML = slots.map(slot => `
+                <div class="slot">
+                    <div>
+                        <strong>
+                            ${escapeHTML(
+                                slot.interviewer_name || "Interviewer"
+                            )}
+                        </strong>
+
+                        <p class="muted">
+                            ${escapeHTML(formatDate(slot.start_at))}
+                        </p>
+
+                        <p class="muted">
+                            Duration:
+                            ${escapeHTML(slot.duration)} minutes
+                        </p>
+                    </div>
+
+                    <button
+                        data-action="book"
+                        data-id="${escapeHTML(slot.id)}">
+                        Book Interview
+                    </button>
+                </div>
+            `).join("");
+
+        } catch (error) {
+            element.innerHTML =
+                `<p class="error">${escapeHTML(error.message)}</p>`;
+        }
+    }
+
+    // ---------- Book an interview ----------
+
+    async function bookSlot(slotId) {
+        if (!confirm("Do you want to book this interview slot?")) {
+            return;
+        }
+
+        try {
+            await studentApi("/bookings", {
+                method: "POST",
+                body: JSON.stringify({
+                    slot_id: slotId
+                })
+            });
+
+            showMessage(
+                "Interview booked successfully!",
+                "success"
+            );
+
+            await loadSlots();
+            await loadBookings();
+
+        } catch (error) {
+            showMessage(error.message, "error");
+        }
+    }
+
+    // ---------- Booking history ----------
+
+    async function loadBookings() {
+        const element = document.getElementById("bookings");
+
+        try {
+            const bookings = await studentApi("/me/bookings");
+
+            if (!Array.isArray(bookings) || bookings.length === 0) {
+                element.innerHTML =
+                    "<p>You have no interview bookings yet.</p>";
+                return;
+            }
+
+            element.innerHTML = bookings.map(booking => `
+                <div class="booking">
+                    <div>
+                        <p>
+                            <strong>Booking ID:</strong>
+                            ${escapeHTML(booking.booking_id)}
+                        </p>
+
+                        <p>
+                            <strong>Interviewer:</strong>
+                            ${escapeHTML(
+                                booking.interviewer_name || "Not available"
+                            )}
+                        </p>
+
+                        <p>
+                            <strong>Date:</strong>
+                            ${escapeHTML(formatDate(booking.start_at))}
+                        </p>
+
+                        <p>
+                            <strong>Status:</strong>
+                            <span class="status">
+                                ${escapeHTML(booking.status)}
+                            </span>
+                        </p>
+
+                        <p>
+                            <strong>Result:</strong>
+                            ${escapeHTML(booking.result || "Pending")}
+                        </p>
+
+                        <p>
+                            <strong>Feedback:</strong>
+                            ${escapeHTML(booking.feedback || "Not available")}
+                        </p>
+                    </div>
+
+                    ${
+                        booking.status === "Booked"
+                        ? `
+                            <button
+                                class="cancel"
+                                data-action="cancel"
+                                data-id="${escapeHTML(booking.booking_id)}">
+                                Cancel Interview
+                            </button>
+                        `
+                        : ""
+                    }
+                </div>
+            `).join("");
+
+        } catch (error) {
+            element.innerHTML =
+                `<p class="error">${escapeHTML(error.message)}</p>`;
+        }
+    }
+
+    // ---------- Cancel booking ----------
+
+    async function cancelBooking(bookingId) {
+        if (!confirm("Are you sure you want to cancel this interview?")) {
+            return;
+        }
+
+        try {
+            await studentApi(
+                "/bookings/" +
+                encodeURIComponent(bookingId) +
+                "/cancel",
+                {
+                    method: "POST"
+                }
+            );
+
+            showMessage(
+                "Interview cancelled successfully.",
+                "success"
+            );
+
+            await loadSlots();
+            await loadBookings();
+
+        } catch (error) {
+            showMessage(error.message, "error");
+        }
+    }
+
+    // ---------- Button event handling ----------
+
+    document.addEventListener("click", function(event) {
+        const button = event.target.closest("button[data-action]");
+
+        if (!button) return;
+
+        const action = button.dataset.action;
+        const id = button.dataset.id;
+
+        if (action === "book") {
+            bookSlot(id);
+        }
+
+        if (action === "cancel") {
+            cancelBooking(id);
+        }
+    });
+
+    // ---------- Logout ----------
+
+    document.getElementById("logoutButton").addEventListener(
+        "click",
+        function() {
+            if (typeof logout === "function") {
+                logout();
+            } else {
+                window.location.href = "login.html";
+            }
+        }
+    );
+
+    // ---------- Start dashboard ----------
+
+    async function initializeStudentDashboard() {
+        const token = getStudentToken();
+
+        if (!token) {
+            window.location.href = "login.html";
+            return;
+        }
+
+        await loadProfile();
+
+        await Promise.all([
+            loadSlots(),
+            loadBookings()
+        ]);
+    }
+
+    initializeStudentDashboard();
+
+</script>
+
+</body>
+</html>

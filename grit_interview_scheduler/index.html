@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GRIT | Interview Scheduler</title>
+<style>
+:root{--navy:#172554;--blue:#3157d5;--ink:#172033;--muted:#667085;--bg:#f5f7fb;--line:#e5e9f2;--green:#16845b;--red:#c43d4b;--amber:#a66a08}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font:15px/1.5 Inter,system-ui,-apple-system,Segoe UI,Arial;color:var(--ink)}
+header{background:linear-gradient(115deg,#172554,#304eaa);color:white;padding:20px max(22px,calc((100% - 1180px)/2));display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
+.brand{font-size:20px;font-weight:800;letter-spacing:.3px}.brand small{display:block;font-size:11px;font-weight:500;opacity:.8;letter-spacing:1.5px}
+.top-actions{display:flex;align-items:center;gap:10px}.top-actions select{background:#fff;color:#172033;border:0;border-radius:9px;padding:10px}
+main{max-width:1180px;margin:28px auto;padding:0 20px}.intro{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin-bottom:22px;flex-wrap:wrap}
+h1{font-size:27px;margin:0 0 4px}.sub{color:var(--muted);margin:0}.pill{display:inline-flex;align-items:center;border-radius:99px;padding:5px 10px;font-size:12px;font-weight:700;background:#e9efff;color:#2947a8}
+.tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:20px}.tab{border:1px solid var(--line);background:white;color:#475467;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:650}.tab.active{background:var(--navy);color:white;border-color:var(--navy)}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}.card{background:white;border:1px solid var(--line);border-radius:15px;padding:18px;box-shadow:0 4px 14px #17255408}.span-3{grid-column:span 3}.span-4{grid-column:span 4}.span-5{grid-column:span 5}.span-6{grid-column:span 6}.span-7{grid-column:span 7}.span-8{grid-column:span 8}.span-12{grid-column:span 12}
+.metric{font-size:28px;font-weight:800;margin:3px 0}.metric-label{color:var(--muted);font-size:13px}.card h2{font-size:17px;margin:0 0 13px}.card h3{font-size:15px;margin:0 0 8px}
+button,.button{border:0;border-radius:9px;padding:10px 14px;background:var(--blue);color:white;font-weight:700;cursor:pointer}.secondary{background:#eef2ff;color:#2947a8}.danger{background:#fff0f1;color:var(--red)}.success{background:#e8f7f0;color:var(--green)}button:disabled{opacity:.45;cursor:not-allowed}
+label{display:block;font-size:13px;font-weight:650;margin:10px 0 5px}input,select,textarea{width:100%;padding:10px 11px;border:1px solid #d7ddea;border-radius:9px;background:white;font:inherit;color:var(--ink)}textarea{min-height:80px;resize:vertical}.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.slot-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:9px;margin-top:12px}.slot{background:#f6f8ff;color:#2947a8;border:1px solid #dce4ff;text-align:center}.slot.selected{background:#2947a8;color:white}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:11px 8px;border-bottom:1px solid var(--line);vertical-align:top}th{color:#667085;font-weight:700;background:#fafbfe}
+.status{display:inline-block;padding:4px 8px;border-radius:30px;font-size:11px;font-weight:750;background:#eef2f6;color:#475467;white-space:nowrap}.s-green{background:#e7f6ee;color:#13764e}.s-red{background:#fff0f1;color:#b42332}.s-blue{background:#eaf0ff;color:#2947a8}.s-amber{background:#fff5df;color:#94600b}
+.notice{padding:12px 14px;border-radius:10px;background:#f0f5ff;color:#28459b;font-size:13px;margin:12px 0}.empty{padding:25px;text-align:center;color:var(--muted)}.toolbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:12px}.toolbar input{max-width:260px}.right{margin-left:auto}.small{font-size:12px;color:var(--muted)}.actions{display:flex;gap:6px;flex-wrap:wrap}.hidden{display:none!important}.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#172033;color:#fff;padding:12px 18px;border-radius:10px;box-shadow:0 8px 30px #0003;z-index:10}
+footer{max-width:1180px;margin:26px auto;padding:0 20px 35px;color:#7a8496;font-size:12px}
+@media(max-width:760px){.span-3,.span-4,.span-5,.span-6,.span-7,.span-8{grid-column:span 12}.form-row{grid-template-columns:1fr}h1{font-size:23px}main{margin-top:20px}.top-actions{width:100%}.top-actions select{flex:1}}
+</style></head>
+<body>
+<header><div class="brand">GRIT <small>INTERVIEW SCHEDULER</small></div><div class="top-actions"><span>Preview as</span><select id="roleSelect" aria-label="Choose role"><option value="student">Student</option><option value="interviewer">Interviewer</option><option value="team">Interview team</option></select><button class="secondary" id="resetBtn">Reset demo</button></div></header>
+<main><div class="intro"><div><h1 id="pageTitle">Student dashboard</h1><p class="sub" id="pageSub">Book your eligible interview slot and track your result.</p></div><span class="pill" id="userPill">Demo student · STU-104</span></div>
+<nav class="tabs" id="tabs"></nav><section id="content"></section></main>
+<footer>GRIT Interview Scheduler · Round 1 concept prototype · Demo data is stored in this browser only. Use Reset demo to restore sample data.</footer>
+<div id="toast" class="toast hidden" role="status"></div>
+<script>
+const seed = () => ({
+ students:[
+  {id:'STU-104',name:'Aarav Sharma',eligible:true,email:'aarav@example.com'},
+  {id:'STU-105',name:'Diya Rao',eligible:true,email:'diya@example.com'},
+  {id:'STU-106',name:'Kabir Das',eligible:true,email:'kabir@example.com'},
+  {id:'STU-107',name:'Meera Nair',eligible:false,email:'meera@example.com'}
+ ],
+ interviewers:[
+  {id:'INT-01',name:'Ananya Iyer'},
+  {id:'INT-02',name:'Rahul Menon'}
+ ],
+ slots:[
+  {id:'SL-1',interviewerId:'INT-01',date:future(1),time:'10:00',active:true},
+  {id:'SL-2',interviewerId:'INT-01',date:future(1),time:'11:00',active:true},
+  {id:'SL-3',interviewerId:'INT-02',date:future(2),time:'14:00',active:true},
+  {id:'SL-4',interviewerId:'INT-02',date:future(2),time:'15:00',active:true},
+  {id:'SL-5',interviewerId:'INT-01',date:future(3),time:'10:30',active:true}
+ ],
+ bookings:[
+  {id:'BK-2001',studentId:'STU-105',slotId:'SL-2',status:'Booked',result:'Pending',feedback:''}
+ ]
+});
+function future(n){let d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)}
+let db;try{db=JSON.parse(localStorage.getItem('gritDemoDB'))||seed()}catch(e){db=seed()}
+let role='student',tab='overview',selectedSlot=null;
+const save=()=>localStorage.setItem('gritDemoDB',JSON.stringify(db));
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const student=id=>db.students.find(x=>x.id===id), interviewer=id=>db.interviewers.find(x=>x.id===id), slot=id=>db.slots.find(x=>x.id===id);
+const bookingForStudent=id=>db.bookings.find(x=>x.studentId===id);
+const bookedSlotIds=()=>db.bookings.filter(b=>b.status==='Booked'||b.status==='Completed').map(b=>b.slotId);
+const fmt=d=>new Date(d+'T00:00:00').toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});
+const badge=s=>`<span class="status ${s==='Pass'?'s-green':s==='Fail'?'s-red':s==='Retake'?'s-amber':s==='Booked'||s==='Completed'?'s-blue':''}">${esc(s)}</span>`;
+function toast(msg){$('toast').textContent=msg;$('toast').classList.remove('hidden');setTimeout(()=>$('toast').classList.add('hidden'),2600)}
+function currentStudent(){return db.students[0]}
+function setRole(){role=$('roleSelect').value;tab='overview';render()}
+$('roleSelect').addEventListener('change',setRole);
+$('resetBtn').onclick=()=>{if(confirm('Reset all demo changes?')){db=seed();save();render();toast('Demo data reset.')}};
+function render(){
+ const configs={student:['Student dashboard','Book your eligible interview slot and track your result.','Demo student · STU-104',['overview','book','result']],interviewer:['Interviewer workspace','Manage availability, review your schedule and publish outcomes.','Demo interviewer · INT-01',['overview','availability','schedule']],team:['Interview team dashboard','Monitor eligible students, bookings and interview outcomes.','Demo team · Admin',['overview','students','bookings']]};
+ const c=configs[role];$('pageTitle').textContent=c[0];$('pageSub').textContent=c[1];$('userPill').textContent=c[2];
+ $('tabs').innerHTML=c[3].map(t=>`<button class="tab ${tab===t?'active':''}" data-tab="${t}">${({overview:'Overview',book:'Book interview',result:'My result',availability:'Availability',schedule:'My schedule',students:'Students',bookings:'All bookings'})[t]}</button>`).join('');
+ document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render()});
+ const views={student:{overview:studentOverview,book:studentBook,result:studentResult},interviewer:{overview:interviewerOverview,availability:availabilityView,schedule:scheduleView},team:{overview:teamOverview,students:studentsView,bookings:bookingsView}};
+ $('content').innerHTML=views[role][tab]();
+ bindActions();
+}
+function studentOverview(){let s=currentStudent(),b=bookingForStudent(s.id);return `<div class="grid">
+ <div class="card span-3"><div class="metric">${s.eligible?'Yes':'No'}</div><div class="metric-label">Interview eligibility</div></div>
+ <div class="card span-3"><div class="metric">${b?1:0}</div><div class="metric-label">Active booking</div></div>
+ <div class="card span-3"><div class="metric">${b?b.result:'—'}</div><div class="metric-label">Latest result</div></div>
+ <div class="card span-3"><div class="metric">${db.slots.filter(x=>x.active&&!bookedSlotIds().includes(x.id)).length}</div><div class="metric-label">Slots currently available</div></div>
+ <div class="card span-8"><h2>Your interview journey</h2>${journey(b)}</div><div class="card span-4"><h2>Quick actions</h2><p class="small">You are signed in as ${esc(s.name)} (${s.id}).</p><button onclick="go('book')" ${!s.eligible||b?'disabled':''}>Find an interview slot</button><p class="small">You can only hold one active booking at a time.</p></div></div>`}
+function journey(b){let steps=['Eligible','Booked','Completed','Result published'];let done=!b?1:b.result==='Pending'?2:4;return `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">${steps.map((x,i)=>`<div style="border-top:4px solid ${i<done?'#3157d5':'#e5e9f2'};padding-top:9px"><b>${i+1}. ${x}</b><div class="small">${i<done?'Complete':i===done?'Current':'Upcoming'}</div></div>`).join('')}</div>${b?`<div class="notice">Booking ${esc(b.id)} · ${esc(slot(b.slotId)?.date||'')} · ${esc(slot(b.slotId)?.time||'')} · ${badge(b.status)}</div>`:'<div class="notice">You are eligible. Choose an available time to continue.</div>'}`}
+function studentBook(){let s=currentStudent(),b=bookingForStudent(s.id),available=db.slots.filter(x=>x.active&&!bookedSlotIds().includes(x.id));return `<div class="grid"><div class="card span-8"><h2>Choose an interview slot</h2><p class="small">All times are shown in local time. A slot is confirmed only after the booking succeeds.</p>${!s.eligible?'<div class="notice">Your account is not currently eligible to book. Contact the GRIT team.</div>':b?`<div class="notice">You already have booking ${esc(b.id)}. Cancel it before choosing another slot.</div>`:available.length?`<div class="slot-list">${available.map(x=>`<button class="slot ${selectedSlot===x.id?'selected':''}" data-slot="${x.id}"><b>${fmt(x.date)}</b><br>${x.time}<br><small>${esc(interviewer(x.interviewerId)?.name||'Interviewer')}</small></button>`).join('')}</div><div style="margin-top:18px"><button id="confirmBooking" ${selectedSlot?'':'disabled'}>Confirm booking</button></div>`:'<div class="empty">No open slots right now. Please check again later.</div>'}</div><div class="card span-4"><h2>Booking rules</h2><ul class="small"><li>Only eligible students can book.</li><li>One active booking per student.</li><li>Each slot can be booked by one student only.</li><li>Cancelled slots become available again.</li></ul></div></div>`}
+function studentResult(){let b=bookingForStudent(currentStudent().id);return `<div class="card span-12"><h2>Interview status and result</h2>${!b?'<div class="empty">No interview booking found. Book a slot to get started.</div>':`<p>Booking ID: <b>${esc(b.id)}</b></p><p>Scheduled: <b>${fmt(slot(b.slotId)?.date||'')} at ${esc(slot(b.slotId)?.time||'')}</b></p><p>Status: ${badge(b.status)}</p><p>Outcome: ${badge(b.result)}</p><p>Interviewer feedback: ${esc(b.feedback||'No feedback has been added yet.')}</p>${b.status==='Booked'?'<button class="danger" id="cancelBooking">Cancel booking</button>':''}`}</div>`}
+function interviewerOverview(){let mine=db.slots.filter(x=>x.interviewerId==='INT-01'),booked=db.bookings.filter(b=>mine.some(s=>s.id===b.slotId));return `<div class="grid"><div class="card span-4"><div class="metric">${mine.length}</div><div class="metric-label">Slots created</div></div><div class="card span-4"><div class="metric">${booked.length}</div><div class="metric-label">Booked interviews</div></div><div class="card span-4"><div class="metric">${booked.filter(b=>b.result==='Pending').length}</div><div class="metric-label">Outcomes pending</div></div><div class="card span-12"><h2>Today's workspace</h2><p class="small">Use Availability to add time slots. Use My schedule to record an outcome after an interview.</p><button onclick="go('availability')">Manage availability</button> <button class="secondary" onclick="go('schedule')">Open my schedule</button></div></div>`}
+function availabilityView(){return `<div class="grid"><div class="card span-5"><h2>Add availability</h2><form id="slotForm"><label>Date</label><input type="date" name="date" min="${future(0)}" required><div class="form-row"><div><label>Start time</label><input type="time" name="time" required></div><div><label>Duration</label><select name="duration"><option>30</option><option>45</option><option>60</option></select></div></div><label>Interviewer</label><select name="interviewer"><option value="INT-01">Ananya Iyer (demo)</option></select><p class="small">This prototype creates one selectable slot at the chosen start time.</p><button>Add slot</button></form></div><div class="card span-7"><h2>My availability</h2>${slotTable(db.slots.filter(s=>s.interviewerId==='INT-01'))}</div></div>`}
+function scheduleView(){let mine=db.slots.filter(s=>s.interviewerId==='INT-01'),bs=db.bookings.filter(b=>mine.some(s=>s.id===b.slotId));return `<div class="card"><h2>My interview schedule</h2>${bs.length?`<table><thead><tr><th>Student</th><th>Date & time</th><th>Status</th><th>Outcome</th><th>Action</th></tr></thead><tbody>${bs.map(b=>{let sl=slot(b.slotId);return `<tr><td>${esc(student(b.studentId)?.name)}<br><span class="small">${b.studentId}</span></td><td>${fmt(sl.date)}<br>${sl.time}</td><td>${badge(b.status)}</td><td>${badge(b.result)}</td><td><button class="secondary" data-outcome="${b.id}">Record outcome</button></td></tr>`}).join('')}</tbody></table>`:'<div class="empty">No interviews have been booked into your slots.</div>'}</div>`}
+function teamOverview(){let eligible=db.students.filter(s=>s.eligible).length,booked=db.bookings.filter(b=>b.status==='Booked'||b.status==='Completed').length;return `<div class="grid"><div class="card span-3"><div class="metric">${eligible}</div><div class="metric-label">Eligible students</div></div><div class="card span-3"><div class="metric">${booked}</div><div class="metric-label">Booked / completed</div></div><div class="card span-3"><div class="metric">${eligible-db.students.filter(s=>s.eligible&&bookingForStudent(s.id)).length}</div><div class="metric-label">Not yet booked</div></div><div class="card span-3"><div class="metric">${db.bookings.filter(b=>b.result!=='Pending').length}</div><div class="metric-label">Results published</div></div><div class="card span-12"><h2>Team actions</h2><button onclick="go('students')">View student eligibility</button> <button class="secondary" onclick="go('bookings')">View all bookings</button></div></div>`}
+function studentsView(){return `<div class="card"><h2>Student eligibility and booking status</h2><table><thead><tr><th>Student</th><th>Eligibility</th><th>Booking</th><th>Result</th></tr></thead><tbody>${db.students.map(s=>{let b=bookingForStudent(s.id);return `<tr><td>${esc(s.name)}<br><span class="small">${s.id}</span></td><td>${badge(s.eligible?'Eligible':'Not eligible')}</td><td>${b?badge(b.status):badge('Not booked')}</td><td>${b?badge(b.result):'—'}</td></tr>`}).join('')}</tbody></table></div>`}
+function bookingsView(){return `<div class="card"><h2>All interview bookings</h2>${db.bookings.length?`<table><thead><tr><th>Booking</th><th>Student</th><th>Interviewer</th><th>Date / time</th><th>Status</th><th>Result</th></tr></thead><tbody>${db.bookings.map(b=>{let sl=slot(b.slotId);return `<tr><td>${b.id}</td><td>${esc(student(b.studentId)?.name)}</td><td>${esc(interviewer(sl?.interviewerId)?.name)}</td><td>${sl?fmt(sl.date)+' · '+sl.time:'Slot removed'}</td><td>${badge(b.status)}</td><td>${badge(b.result)}</td></tr>`}).join('')}</tbody></table>`:'<div class="empty">No bookings yet.</div>'}</div>`}
+function slotTable(items){return items.length?`<table><thead><tr><th>Date</th><th>Time</th><th>State</th><th></th></tr></thead><tbody>${items.map(s=>`<tr><td>${fmt(s.date)}</td><td>${s.time}</td><td>${bookedSlotIds().includes(s.id)?badge('Booked'):badge(s.active?'Available':'Inactive')}</td><td>${!bookedSlotIds().includes(s.id)?`<button class="danger" data-remove="${s.id}">Remove</button>`:''}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">No availability added yet.</div>'}
+function go(t){tab=t;render()}
+function bindActions(){
+ document.querySelectorAll('[data-slot]').forEach(b=>b.onclick=()=>{selectedSlot=b.dataset.slot;render()});
+ if($('confirmBooking'))$('confirmBooking').onclick=()=>{let s=currentStudent();if(!s.eligible||bookingForStudent(s.id))return toast('You are not eligible or already have a booking.');let sl=slot(selectedSlot);if(!sl||!sl.active||bookedSlotIds().includes(sl.id))return toast('That slot is no longer available. Please choose another.');db.bookings.push({id:'BK-'+Date.now(),studentId:s.id,slotId:sl.id,status:'Booked',result:'Pending',feedback:''});save();selectedSlot=null;render();toast('Interview slot booked successfully.');};
+ if($('cancelBooking'))$('cancelBooking').onclick=()=>{let b=bookingForStudent(currentStudent().id);if(b&&confirm('Cancel this interview booking?')){db.bookings=db.bookings.filter(x=>x.id!==b.id);save();render();toast('Booking cancelled. Slot released.')}};
+ if($('slotForm'))$('slotForm').onsubmit=e=>{e.preventDefault();let f=new FormData(e.target),date=f.get('date'),time=f.get('time');if(db.slots.some(s=>s.interviewerId==='INT-01'&&s.date===date&&s.time===time&&s.active))return toast('You already have a slot at that time.');db.slots.push({id:'SL-'+Date.now(),interviewerId:'INT-01',date,time,active:true});save();render();toast('Availability added.');};
+ document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{let id=b.dataset.remove;if(confirm('Remove this available slot?')){db.slots=db.slots.filter(s=>s.id!==id);save();render();toast('Slot removed.')}});
+ document.querySelectorAll('[data-outcome]').forEach(b=>b.onclick=()=>outcome(b.dataset.outcome));
+}
+function outcome(id){let b=db.bookings.find(x=>x.id===id);if(!b)return;let result=prompt('Enter outcome: Pass, Fail, or Retake','Pass');if(!result)return;result=result.trim().toLowerCase();let map={pass:'Pass',fail:'Fail',retake:'Retake'};if(!map[result])return toast('Please enter Pass, Fail, or Retake.');let feedback=prompt('Add brief feedback (optional)','');b.result=map[result];b.feedback=feedback||'';b.status='Completed';save();render();toast('Interview outcome saved.');}
+render();
+</script></body></html>

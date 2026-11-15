@@ -1,0 +1,616 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>GRIT | Admin Dashboard</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background: #f1f4fa;
+            color: #202638;
+        }
+
+        header {
+            background: #101936;
+            color: white;
+            padding: 20px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        header h2 {
+            margin: 0;
+        }
+
+        main {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 18px;
+        }
+
+        section {
+            background: white;
+            padding: 24px;
+            margin-bottom: 22px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px #0000000d;
+        }
+
+        h1, h2, h3 {
+            color: #172554;
+        }
+
+        .welcome-section p {
+            color: #667085;
+        }
+
+        button {
+            background: #315bd6;
+            color: white;
+            border: none;
+            padding: 11px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            opacity: 0.88;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .logout {
+            background: #b43b3b;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+            margin-bottom: 22px;
+        }
+
+        .summary-card {
+            background: white;
+            padding: 22px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px #0000000d;
+            border-left: 5px solid #315bd6;
+        }
+
+        .summary-card h3 {
+            margin: 0 0 12px;
+            color: #667085;
+            font-size: 15px;
+            font-weight: normal;
+        }
+
+        .summary-card p {
+            margin: 0;
+            font-size: 30px;
+            font-weight: bold;
+            color: #172554;
+        }
+
+        .table-wrap {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 650px;
+        }
+
+        th, td {
+            padding: 13px;
+            border-bottom: 1px solid #e5e8ef;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th {
+            background: #f4f6fa;
+            color: #344054;
+        }
+
+        tbody tr:hover {
+            background: #f8faff;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-booked {
+            background: #fff2cc;
+            color: #805b00;
+        }
+
+        .status-completed {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-cancelled {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .muted {
+            color: #667085;
+        }
+
+        .section-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .loading {
+            color: #667085;
+            padding: 15px 0;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #667085;
+        }
+
+        @media (max-width: 800px) {
+            .summary-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            section {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h2>GRIT ADMIN PORTAL</h2>
+    <button class="logout" id="logoutButton">
+        Logout
+    </button>
+</header>
+
+<main>
+
+    <!-- Administrator profile -->
+
+    <section class="welcome-section">
+        <h1 id="welcome">Welcome, Admin</h1>
+        <p id="profile">Loading administrator profile...</p>
+    </section>
+
+    <!-- Dashboard summary -->
+
+    <div class="summary-grid">
+
+        <div class="summary-card">
+            <h3>Total Students</h3>
+            <p id="totalStudents">-</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Total Interviewers</h3>
+            <p id="totalInterviewers">-</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Total Bookings</h3>
+            <p id="totalBookings">-</p>
+        </div>
+
+        <div class="summary-card">
+            <h3>Completed Interviews</h3>
+            <p id="completedBookings">-</p>
+        </div>
+
+    </div>
+
+    <!-- Students -->
+
+    <section>
+        <div class="section-heading">
+            <h2>All Students</h2>
+            <span class="muted" id="studentCount">0 students</span>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Student ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Eligibility</th>
+                    </tr>
+                </thead>
+
+                <tbody id="students">
+                    <tr>
+                        <td colspan="4" class="loading">
+                            Loading students...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Interviewers -->
+
+    <section>
+        <div class="section-heading">
+            <h2>All Interviewers</h2>
+            <span class="muted" id="interviewerCount">
+                0 interviewers
+            </span>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Interviewer ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                    </tr>
+                </thead>
+
+                <tbody id="interviewers">
+                    <tr>
+                        <td colspan="3" class="loading">
+                            Loading interviewers...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Bookings -->
+
+    <section>
+        <div class="section-heading">
+            <h2>All Interview Bookings</h2>
+            <span class="muted" id="bookingCount">
+                0 bookings
+            </span>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Booking ID</th>
+                        <th>Student</th>
+                        <th>Interviewer</th>
+                        <th>Interview Date</th>
+                        <th>Status</th>
+                        <th>Result</th>
+                    </tr>
+                </thead>
+
+                <tbody id="bookings">
+                    <tr>
+                        <td colspan="6" class="loading">
+                            Loading bookings...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </section>
+
+    <div id="message" role="alert"></div>
+
+</main>
+
+<footer>
+    GRIT Interview Scheduling System | Admin Dashboard
+</footer>
+
+<script src="api.js"></script>
+
+<script>
+
+    // ---------- HTML safety helper ----------
+
+    function safeText(value) {
+        return String(value ?? "-");
+    }
+
+    // ---------- Table helper ----------
+
+    function addCell(row, value) {
+        const cell = document.createElement("td");
+        cell.textContent = safeText(value);
+        row.appendChild(cell);
+        return cell;
+    }
+
+    function showEmptyRow(tableId, colspan, message) {
+        const tbody = document.getElementById(tableId);
+        tbody.replaceChildren();
+
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+
+        cell.colSpan = colspan;
+        cell.textContent = message;
+        cell.className = "muted";
+
+        row.appendChild(cell);
+        tbody.appendChild(row);
+    }
+
+    function showError(message) {
+        const element = document.getElementById("message");
+        element.textContent = message;
+        element.className = "message error";
+    }
+
+    // ---------- Date formatting ----------
+
+    function formatDate(value) {
+        if (!value) return "-";
+
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return value;
+        }
+
+        return date.toLocaleString();
+    }
+
+    // ---------- Student table ----------
+
+    function displayStudents(students) {
+        const tbody = document.getElementById("students");
+
+        tbody.replaceChildren();
+
+        document.getElementById("studentCount").textContent =
+            students.length + " students";
+
+        document.getElementById("totalStudents").textContent =
+            students.length;
+
+        if (students.length === 0) {
+            showEmptyRow(
+                "students",
+                4,
+                "No students found."
+            );
+            return;
+        }
+
+        students.forEach(student => {
+            const row = document.createElement("tr");
+
+            addCell(row, student.id);
+            addCell(row, student.name);
+            addCell(row, student.email);
+
+            const eligibleCell = document.createElement("td");
+
+            eligibleCell.textContent =
+                student.eligible ? "Eligible" : "Not Eligible";
+
+            row.appendChild(eligibleCell);
+
+            tbody.appendChild(row);
+        });
+    }
+
+    // ---------- Interviewer table ----------
+
+    function displayInterviewers(interviewers) {
+        const tbody = document.getElementById("interviewers");
+
+        tbody.replaceChildren();
+
+        document.getElementById("interviewerCount").textContent =
+            interviewers.length + " interviewers";
+
+        document.getElementById("totalInterviewers").textContent =
+            interviewers.length;
+
+        if (interviewers.length === 0) {
+            showEmptyRow(
+                "interviewers",
+                3,
+                "No interviewers found."
+            );
+            return;
+        }
+
+        interviewers.forEach(interviewer => {
+            const row = document.createElement("tr");
+
+            addCell(row, interviewer.id);
+            addCell(row, interviewer.name);
+            addCell(row, interviewer.email);
+
+            tbody.appendChild(row);
+        });
+    }
+
+    // ---------- Booking table ----------
+
+    function displayBookings(bookings) {
+        const tbody = document.getElementById("bookings");
+
+        tbody.replaceChildren();
+
+        document.getElementById("bookingCount").textContent =
+            bookings.length + " bookings";
+
+        document.getElementById("totalBookings").textContent =
+            bookings.length;
+
+        const completed = bookings.filter(
+            booking => booking.status === "Completed"
+        ).length;
+
+        document.getElementById("completedBookings").textContent =
+            completed;
+
+        if (bookings.length === 0) {
+            showEmptyRow(
+                "bookings",
+                6,
+                "No interview bookings found."
+            );
+            return;
+        }
+
+        bookings.forEach(booking => {
+            const row = document.createElement("tr");
+
+            addCell(row, booking.id);
+            addCell(row, booking.student_name);
+            addCell(row, booking.interviewer_name);
+            addCell(row, formatDate(booking.start_at));
+
+            const statusCell = document.createElement("td");
+            const statusBadge = document.createElement("span");
+
+            statusBadge.textContent =
+                safeText(booking.status);
+
+            statusBadge.className = "status";
+
+            if (booking.status === "Completed") {
+                statusBadge.classList.add("status-completed");
+            } else if (booking.status === "Cancelled") {
+                statusBadge.classList.add("status-cancelled");
+            } else {
+                statusBadge.classList.add("status-booked");
+            }
+
+            statusCell.appendChild(statusBadge);
+            row.appendChild(statusCell);
+
+            addCell(row, booking.result || "Pending");
+
+            tbody.appendChild(row);
+        });
+    }
+
+    // ---------- Load administrator dashboard ----------
+
+    async function loadAdminDashboard() {
+
+        try {
+
+            // Verify login and administrator role.
+            const user = await getProfile();
+
+            if (user.role !== "admin") {
+                showError("Administrator access required.");
+                return;
+            }
+
+            document.getElementById("welcome").textContent =
+                "Welcome, " + user.name;
+
+            document.getElementById("profile").textContent =
+                user.email + " | ADMIN";
+
+            // Fetch all administrator data.
+            const [students, interviewers, bookings] =
+                await Promise.all([
+                    apiRequest("/students"),
+                    apiRequest("/interviewers"),
+                    apiRequest("/bookings")
+                ]);
+
+            // Populate dashboard.
+            displayStudents(students);
+            displayInterviewers(interviewers);
+            displayBookings(bookings);
+
+        } catch (error) {
+
+            showError(error.message);
+
+            if (error.message.includes("401")) {
+                window.location.href = "login.html";
+            }
+        }
+    }
+
+    // ---------- Logout ----------
+
+    document.getElementById("logoutButton")
+        .addEventListener("click", function() {
+
+            // Use the existing logout function from api.js.
+            logout();
+
+        });
+
+    // ---------- Start dashboard ----------
+
+    loadAdminDashboard();
+
+</script>
+
+</body>
+</html>
