@@ -5,12 +5,13 @@ from typing import Optional
 import psycopg
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from database import get_connection, init_db
 
 from auth import (
     verify_password,
+    hash_password,
     create_access_token,
     get_current_user,
     require_role,
@@ -20,7 +21,7 @@ from auth import (
 app = FastAPI(
     title="GRIT Interview Scheduler",
     description="Student interview scheduling API",
-    version="2.1.0",
+    version="2.2.0",
 )
 
 app.add_middleware(
@@ -39,14 +40,16 @@ init_db()
 # ---------- Request models ----------
 
 class StudentInput(BaseModel):
-    name: str
-    email: str
+    name: str = Field(min_length=1, max_length=150)
+    email: str = Field(min_length=5, max_length=254)
+    password: str = Field(min_length=12)
     eligible: bool = False
 
 
 class InterviewerInput(BaseModel):
-    name: str
-    email: str
+    name: str = Field(min_length=1, max_length=150)
+    email: str = Field(min_length=5, max_length=254)
+    password: str = Field(min_length=12)
 
 
 class SlotInput(BaseModel):
@@ -106,30 +109,55 @@ def create_student(
 
     try:
         student_id = "STU-" + uuid4().hex[:8].upper()
+        clean_email = data.email.lower().strip()
+        clean_name = data.name.strip()
 
-        connection.execute(
-            """
-            INSERT INTO students (id, name, email, eligible)
-            VALUES (%s, %s, %s, %s)
-            """,
-            (
-                student_id,
-                data.name,
-                data.email.lower().strip(),
-                int(data.eligible),
-            ),
-        )
+        if not clean_name:
+            raise HTTPException(400, "Student name cannot be empty")
 
-        connection.commit()
+        password_hash = hash_password(data.password)
+
+        with connection.transaction():
+            connection.execute(
+                """
+                INSERT INTO students (id, name, email, eligible)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (
+                    student_id,
+                    clean_name,
+                    clean_email,
+                    int(data.eligible),
+                ),
+            )
+
+            connection.execute(
+                """
+                INSERT INTO users
+                (id, name, email, password_hash, role, active)
+                VALUES (%s, %s, %s, %s, 'student', 1)
+                """,
+                (
+                    student_id,
+                    clean_name,
+                    clean_email,
+                    password_hash,
+                ),
+            )
 
         return {
-            "message": "Student created",
+            "message": "Student and login account created successfully",
             "student_id": student_id,
+            "email": clean_email,
+            "role": "student",
         }
 
     except psycopg.IntegrityError:
         connection.rollback()
-        raise HTTPException(409, "Email already exists")
+        raise HTTPException(
+            409,
+            "This email address is already registered",
+        )
 
     finally:
         connection.close()
@@ -153,29 +181,54 @@ def create_interviewer(
 
     try:
         interviewer_id = "INT-" + uuid4().hex[:8].upper()
+        clean_email = data.email.lower().strip()
+        clean_name = data.name.strip()
 
-        connection.execute(
-            """
-            INSERT INTO interviewers (id, name, email)
-            VALUES (%s, %s, %s)
-            """,
-            (
-                interviewer_id,
-                data.name,
-                data.email.lower().strip(),
-            ),
-        )
+        if not clean_name:
+            raise HTTPException(400, "Interviewer name cannot be empty")
 
-        connection.commit()
+        password_hash = hash_password(data.password)
+
+        with connection.transaction():
+            connection.execute(
+                """
+                INSERT INTO interviewers (id, name, email)
+                VALUES (%s, %s, %s)
+                """,
+                (
+                    interviewer_id,
+                    clean_name,
+                    clean_email,
+                ),
+            )
+
+            connection.execute(
+                """
+                INSERT INTO users
+                (id, name, email, password_hash, role, active)
+                VALUES (%s, %s, %s, %s, 'interviewer', 1)
+                """,
+                (
+                    interviewer_id,
+                    clean_name,
+                    clean_email,
+                    password_hash,
+                ),
+            )
 
         return {
-            "message": "Interviewer created",
+            "message": "Interviewer and login account created successfully",
             "interviewer_id": interviewer_id,
+            "email": clean_email,
+            "role": "interviewer",
         }
 
     except psycopg.IntegrityError:
         connection.rollback()
-        raise HTTPException(409, "Email already exists")
+        raise HTTPException(
+            409,
+            "This email address is already registered",
+        )
 
     finally:
         connection.close()

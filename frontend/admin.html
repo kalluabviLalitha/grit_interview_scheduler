@@ -1,11 +1,9 @@
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>GRIT | Admin Dashboard</title>
 
     <style>
@@ -31,9 +29,7 @@
             gap: 15px;
         }
 
-        header h2 {
-            margin: 0;
-        }
+        header h2 { margin: 0; }
 
         main {
             max-width: 1200px;
@@ -49,12 +45,26 @@
             box-shadow: 0 2px 10px #0000000d;
         }
 
-        h1, h2, h3 {
-            color: #172554;
+        h1, h2, h3 { color: #172554; }
+
+        label {
+            display: block;
+            margin: 12px 0 6px;
+            font-weight: bold;
+            font-size: 14px;
         }
 
-        .welcome-section p {
-            color: #667085;
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d0d5dd;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+
+        input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
         }
 
         button {
@@ -65,19 +75,19 @@
             border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
+            margin-top: 15px;
         }
 
-        button:hover {
-            opacity: 0.88;
-        }
+        button:hover { opacity: .88; }
 
         button:disabled {
-            opacity: 0.6;
+            opacity: .6;
             cursor: not-allowed;
         }
 
         .logout {
             background: #b43b3b;
+            margin: 0;
         }
 
         .summary-grid {
@@ -91,8 +101,8 @@
             background: white;
             padding: 22px;
             border-radius: 10px;
-            box-shadow: 0 2px 10px #0000000d;
             border-left: 5px solid #315bd6;
+            box-shadow: 0 2px 10px #0000000d;
         }
 
         .summary-card h3 {
@@ -108,6 +118,21 @@
             font-weight: bold;
             color: #172554;
         }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .form-card {
+            background: #f8faff;
+            border: 1px solid #e5e8ef;
+            border-radius: 8px;
+            padding: 18px;
+        }
+
+        .form-card h3 { margin-top: 0; }
 
         .table-wrap {
             width: 100%;
@@ -130,10 +155,6 @@
         th {
             background: #f4f6fa;
             color: #344054;
-        }
-
-        tbody tr:hover {
-            background: #f8faff;
         }
 
         .status {
@@ -163,21 +184,22 @@
             padding: 12px;
             border-radius: 6px;
             margin-top: 15px;
+            display: none;
         }
 
         .error {
             background: #fee2e2;
             color: #991b1b;
+            display: block;
         }
 
         .success {
             background: #dcfce7;
             color: #166534;
+            display: block;
         }
 
-        .muted {
-            color: #667085;
-        }
+        .muted { color: #667085; }
 
         .section-heading {
             display: flex;
@@ -187,31 +209,20 @@
             gap: 12px;
         }
 
-        .loading {
+        .help-text {
+            font-size: 13px;
             color: #667085;
-            padding: 15px 0;
-        }
-
-        footer {
-            text-align: center;
-            padding: 20px;
-            color: #667085;
+            margin-top: 6px;
         }
 
         @media (max-width: 800px) {
-            .summary-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
+            .summary-grid { grid-template-columns: repeat(2, 1fr); }
+            .form-grid { grid-template-columns: 1fr; }
         }
 
         @media (max-width: 480px) {
-            .summary-grid {
-                grid-template-columns: 1fr;
-            }
-
-            section {
-                padding: 16px;
-            }
+            .summary-grid { grid-template-columns: 1fr; }
+            section { padding: 16px; }
         }
     </style>
 </head>
@@ -220,47 +231,137 @@
 
 <header>
     <h2>GRIT ADMIN PORTAL</h2>
-    <button class="logout" id="logoutButton">
-        Logout
-    </button>
+    <button class="logout" id="logoutButton">Logout</button>
 </header>
 
 <main>
 
-    <!-- Administrator profile -->
-
-    <section class="welcome-section">
+    <section>
         <h1 id="welcome">Welcome, Admin</h1>
-        <p id="profile">Loading administrator profile...</p>
+        <p id="profile" class="muted">Loading profile...</p>
     </section>
 
-    <!-- Dashboard summary -->
-
     <div class="summary-grid">
-
         <div class="summary-card">
             <h3>Total Students</h3>
-            <p id="totalStudents">-</p>
+            <p id="totalStudents">0</p>
         </div>
 
         <div class="summary-card">
             <h3>Total Interviewers</h3>
-            <p id="totalInterviewers">-</p>
+            <p id="totalInterviewers">0</p>
         </div>
 
         <div class="summary-card">
             <h3>Total Bookings</h3>
-            <p id="totalBookings">-</p>
+            <p id="totalBookings">0</p>
         </div>
 
         <div class="summary-card">
             <h3>Completed Interviews</h3>
-            <p id="completedBookings">-</p>
+            <p id="completedBookings">0</p>
         </div>
-
     </div>
 
-    <!-- Students -->
+    <section>
+        <h2>Manage GRIT Users</h2>
+
+        <div class="form-grid">
+
+            <div class="form-card">
+                <h3>Add Student Account</h3>
+
+                <form id="studentForm">
+                    <label for="studentName">Student Name</label>
+                    <input id="studentName" required maxlength="150">
+
+                    <label for="studentEmail">Student Email</label>
+                    <input id="studentEmail" type="email" required>
+
+                    <label for="studentPassword">Initial Password</label>
+                    <input
+                        id="studentPassword"
+                        type="password"
+                        required
+                        minlength="12"
+                        autocomplete="new-password"
+                    >
+                    <p class="help-text">
+                        Minimum 12 characters. Share this password securely with the student.
+                    </p>
+
+                    <label>
+                        <input id="studentEligible" type="checkbox">
+                        Eligible for interview
+                    </label>
+
+                    <button type="submit">Add Student Account</button>
+                </form>
+            </div>
+
+            <div class="form-card">
+                <h3>Add Interviewer Account</h3>
+
+                <form id="interviewerForm">
+                    <label for="interviewerName">Interviewer Name</label>
+                    <input id="interviewerName" required maxlength="150">
+
+                    <label for="interviewerEmail">Interviewer Email</label>
+                    <input id="interviewerEmail" type="email" required>
+
+                    <label for="interviewerPassword">Initial Password</label>
+                    <input
+                        id="interviewerPassword"
+                        type="password"
+                        required
+                        minlength="12"
+                        autocomplete="new-password"
+                    >
+                    <p class="help-text">
+                        Minimum 12 characters. Share this password securely with the interviewer.
+                    </p>
+
+                    <button type="submit">Add Interviewer Account</button>
+                </form>
+            </div>
+
+        </div>
+
+        <div id="message" class="message" role="alert"></div>
+    </section>
+
+    <section>
+        <h2>Create Interview Slot</h2>
+
+        <form id="slotForm">
+            <div class="form-grid">
+
+                <div>
+                    <label for="slotInterviewer">Select Interviewer</label>
+                    <select id="slotInterviewer" required>
+                        <option value="">Load interviewers first</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="slotDate">Interview Date and Time</label>
+                    <input id="slotDate" type="datetime-local" required>
+                </div>
+
+                <div>
+                    <label for="slotDuration">Duration</label>
+                    <select id="slotDuration" required>
+                        <option value="30">30 minutes</option>
+                        <option value="45">45 minutes</option>
+                        <option value="60">60 minutes</option>
+                    </select>
+                </div>
+
+            </div>
+
+            <button type="submit">Create Interview Slot</button>
+        </form>
+    </section>
 
     <section>
         <div class="section-heading">
@@ -278,26 +379,17 @@
                         <th>Eligibility</th>
                     </tr>
                 </thead>
-
                 <tbody id="students">
-                    <tr>
-                        <td colspan="4" class="loading">
-                            Loading students...
-                        </td>
-                    </tr>
+                    <tr><td colspan="4">Loading students...</td></tr>
                 </tbody>
             </table>
         </div>
     </section>
 
-    <!-- Interviewers -->
-
     <section>
         <div class="section-heading">
             <h2>All Interviewers</h2>
-            <span class="muted" id="interviewerCount">
-                0 interviewers
-            </span>
+            <span class="muted" id="interviewerCount">0 interviewers</span>
         </div>
 
         <div class="table-wrap">
@@ -309,26 +401,17 @@
                         <th>Email</th>
                     </tr>
                 </thead>
-
                 <tbody id="interviewers">
-                    <tr>
-                        <td colspan="3" class="loading">
-                            Loading interviewers...
-                        </td>
-                    </tr>
+                    <tr><td colspan="3">Loading interviewers...</td></tr>
                 </tbody>
             </table>
         </div>
     </section>
 
-    <!-- Bookings -->
-
     <section>
         <div class="section-heading">
             <h2>All Interview Bookings</h2>
-            <span class="muted" id="bookingCount">
-                0 bookings
-            </span>
+            <span class="muted" id="bookingCount">0 bookings</span>
         </div>
 
         <div class="table-wrap">
@@ -343,48 +426,37 @@
                         <th>Result</th>
                     </tr>
                 </thead>
-
                 <tbody id="bookings">
-                    <tr>
-                        <td colspan="6" class="loading">
-                            Loading bookings...
-                        </td>
-                    </tr>
+                    <tr><td colspan="6">Loading bookings...</td></tr>
                 </tbody>
             </table>
         </div>
-
     </section>
-
-    <div id="message" role="alert"></div>
 
 </main>
 
-<footer>
+<footer style="text-align:center;padding:20px;color:#667085">
     GRIT Interview Scheduling System | Admin Dashboard
 </footer>
 
 <script src="api.js"></script>
 
 <script>
-
-    // ---------- HTML safety helper ----------
-
-    function safeText(value) {
-        return String(value ?? "-");
-    }
-
-    // ---------- Table helper ----------
-
     function addCell(row, value) {
         const cell = document.createElement("td");
-        cell.textContent = safeText(value);
+        cell.textContent = String(value ?? "-");
         row.appendChild(cell);
         return cell;
     }
 
-    function showEmptyRow(tableId, colspan, message) {
-        const tbody = document.getElementById(tableId);
+    function showMessage(message, type = "success") {
+        const box = document.getElementById("message");
+        box.textContent = message;
+        box.className = "message " + type;
+    }
+
+    function showEmptyRow(id, colspan, message) {
+        const tbody = document.getElementById(id);
         tbody.replaceChildren();
 
         const row = document.createElement("tr");
@@ -392,19 +464,10 @@
 
         cell.colSpan = colspan;
         cell.textContent = message;
-        cell.className = "muted";
 
         row.appendChild(cell);
         tbody.appendChild(row);
     }
-
-    function showError(message) {
-        const element = document.getElementById("message");
-        element.textContent = message;
-        element.className = "message error";
-    }
-
-    // ---------- Date formatting ----------
 
     function formatDate(value) {
         if (!value) return "-";
@@ -418,11 +481,8 @@
         return date.toLocaleString();
     }
 
-    // ---------- Student table ----------
-
     function displayStudents(students) {
         const tbody = document.getElementById("students");
-
         tbody.replaceChildren();
 
         document.getElementById("studentCount").textContent =
@@ -431,12 +491,8 @@
         document.getElementById("totalStudents").textContent =
             students.length;
 
-        if (students.length === 0) {
-            showEmptyRow(
-                "students",
-                4,
-                "No students found."
-            );
+        if (!students.length) {
+            showEmptyRow("students", 4, "No students found.");
             return;
         }
 
@@ -446,23 +502,14 @@
             addCell(row, student.id);
             addCell(row, student.name);
             addCell(row, student.email);
-
-            const eligibleCell = document.createElement("td");
-
-            eligibleCell.textContent =
-                student.eligible ? "Eligible" : "Not Eligible";
-
-            row.appendChild(eligibleCell);
+            addCell(row, student.eligible ? "Eligible" : "Not Eligible");
 
             tbody.appendChild(row);
         });
     }
 
-    // ---------- Interviewer table ----------
-
     function displayInterviewers(interviewers) {
         const tbody = document.getElementById("interviewers");
-
         tbody.replaceChildren();
 
         document.getElementById("interviewerCount").textContent =
@@ -471,12 +518,30 @@
         document.getElementById("totalInterviewers").textContent =
             interviewers.length;
 
-        if (interviewers.length === 0) {
-            showEmptyRow(
-                "interviewers",
-                3,
-                "No interviewers found."
-            );
+        const select = document.getElementById("slotInterviewer");
+        const previousValue = select.value;
+
+        select.replaceChildren();
+
+        const defaultOption = document.createElement("option");
+        defaultOption.value = "";
+        defaultOption.textContent = "Select interviewer";
+        select.appendChild(defaultOption);
+
+        interviewers.forEach(interviewer => {
+            const option = document.createElement("option");
+            option.value = interviewer.id;
+            option.textContent =
+                interviewer.name + " (" + interviewer.email + ")";
+            select.appendChild(option);
+        });
+
+        if (interviewers.some(item => item.id === previousValue)) {
+            select.value = previousValue;
+        }
+
+        if (!interviewers.length) {
+            showEmptyRow("interviewers", 3, "No interviewers found.");
             return;
         }
 
@@ -491,11 +556,8 @@
         });
     }
 
-    // ---------- Booking table ----------
-
     function displayBookings(bookings) {
         const tbody = document.getElementById("bookings");
-
         tbody.replaceChildren();
 
         document.getElementById("bookingCount").textContent =
@@ -511,12 +573,8 @@
         document.getElementById("completedBookings").textContent =
             completed;
 
-        if (bookings.length === 0) {
-            showEmptyRow(
-                "bookings",
-                6,
-                "No interview bookings found."
-            );
+        if (!bookings.length) {
+            showEmptyRow("bookings", 6, "No interview bookings found.");
             return;
         }
 
@@ -529,22 +587,20 @@
             addCell(row, formatDate(booking.start_at));
 
             const statusCell = document.createElement("td");
-            const statusBadge = document.createElement("span");
+            const badge = document.createElement("span");
 
-            statusBadge.textContent =
-                safeText(booking.status);
-
-            statusBadge.className = "status";
+            badge.textContent = booking.status;
+            badge.className = "status";
 
             if (booking.status === "Completed") {
-                statusBadge.classList.add("status-completed");
+                badge.classList.add("status-completed");
             } else if (booking.status === "Cancelled") {
-                statusBadge.classList.add("status-cancelled");
+                badge.classList.add("status-cancelled");
             } else {
-                statusBadge.classList.add("status-booked");
+                badge.classList.add("status-booked");
             }
 
-            statusCell.appendChild(statusBadge);
+            statusCell.appendChild(badge);
             row.appendChild(statusCell);
 
             addCell(row, booking.result || "Pending");
@@ -553,17 +609,12 @@
         });
     }
 
-    // ---------- Load administrator dashboard ----------
-
     async function loadAdminDashboard() {
-
         try {
-
-            // Verify login and administrator role.
             const user = await getProfile();
 
             if (user.role !== "admin") {
-                showError("Administrator access required.");
+                showMessage("Administrator access required.", "error");
                 return;
             }
 
@@ -573,7 +624,6 @@
             document.getElementById("profile").textContent =
                 user.email + " | ADMIN";
 
-            // Fetch all administrator data.
             const [students, interviewers, bookings] =
                 await Promise.all([
                     apiRequest("/students"),
@@ -581,14 +631,12 @@
                     apiRequest("/bookings")
                 ]);
 
-            // Populate dashboard.
             displayStudents(students);
             displayInterviewers(interviewers);
             displayBookings(bookings);
 
         } catch (error) {
-
-            showError(error.message);
+            showMessage(error.message, "error");
 
             if (error.message.includes("401")) {
                 window.location.href = "login.html";
@@ -596,20 +644,114 @@
         }
     }
 
-    // ---------- Logout ----------
+    // Add student account
+
+    document.getElementById("studentForm")
+        .addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const button = this.querySelector("button");
+            button.disabled = true;
+
+            try {
+                await apiRequest("/students", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        name: document.getElementById("studentName").value.trim(),
+                        email: document.getElementById("studentEmail").value.trim(),
+                        password: document.getElementById("studentPassword").value,
+                        eligible: document.getElementById("studentEligible").checked
+                    })
+                });
+
+                this.reset();
+                showMessage(
+                    "Student account created successfully. Share the initial password securely."
+                );
+                await loadAdminDashboard();
+
+            } catch (error) {
+                showMessage(error.message, "error");
+            } finally {
+                button.disabled = false;
+            }
+        });
+
+    // Add interviewer account
+
+    document.getElementById("interviewerForm")
+        .addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const button = this.querySelector("button");
+            button.disabled = true;
+
+            try {
+                await apiRequest("/interviewers", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        name: document.getElementById("interviewerName").value.trim(),
+                        email: document.getElementById("interviewerEmail").value.trim(),
+                        password: document.getElementById("interviewerPassword").value
+                    })
+                });
+
+                this.reset();
+                showMessage(
+                    "Interviewer account created successfully. Share the initial password securely."
+                );
+                await loadAdminDashboard();
+
+            } catch (error) {
+                showMessage(error.message, "error");
+            } finally {
+                button.disabled = false;
+            }
+        });
+
+    // Create interview slot
+
+    document.getElementById("slotForm")
+        .addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const button = this.querySelector("button");
+            button.disabled = true;
+
+            try {
+                const dateValue =
+                    document.getElementById("slotDate").value;
+
+                const startAt = new Date(dateValue).toISOString();
+
+                await apiRequest("/slots", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        interviewer_id:
+                            document.getElementById("slotInterviewer").value,
+                        start_at: startAt,
+                        duration: Number(
+                            document.getElementById("slotDuration").value
+                        )
+                    })
+                });
+
+                this.reset();
+                showMessage("Interview slot created successfully.");
+
+            } catch (error) {
+                showMessage(error.message, "error");
+            } finally {
+                button.disabled = false;
+            }
+        });
 
     document.getElementById("logoutButton")
         .addEventListener("click", function() {
-
-            // Use the existing logout function from api.js.
             logout();
-
         });
 
-    // ---------- Start dashboard ----------
-
     loadAdminDashboard();
-
 </script>
 
 </body>
