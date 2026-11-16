@@ -5,14 +5,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GRIT Interviewer Portal</title>
+
   <style>
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       font-family: Arial, sans-serif;
       background: #f1f3f9;
       color: #202638;
     }
+
     header {
       background: #101936;
       color: white;
@@ -21,7 +24,13 @@
       justify-content: space-between;
       align-items: center;
     }
-    main { max-width: 1100px; margin: 30px auto; padding: 0 18px; }
+
+    main {
+      max-width: 1100px;
+      margin: 30px auto;
+      padding: 0 18px;
+    }
+
     section {
       background: white;
       padding: 25px;
@@ -29,32 +38,67 @@
       border-radius: 12px;
       box-shadow: 0 3px 12px #0000000c;
     }
+
     h1, h2 { margin-top: 0; }
-    input, button {
+
+    input, select, textarea, button {
       padding: 11px;
       margin: 6px 4px 6px 0;
       border-radius: 6px;
       border: 1px solid #ccd2df;
+      font: inherit;
     }
+
+    textarea {
+      width: 100%;
+      min-height: 65px;
+      resize: vertical;
+    }
+
     button {
       background: #315bd6;
       color: white;
       border: 0;
       cursor: pointer;
     }
+
     button:hover { background: #2447b2; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+
     .danger { background: #bd3545; }
     .message { margin-top: 12px; color: #315bd6; }
     .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 850px;
+    }
+
     th, td {
       padding: 12px;
       text-align: left;
       border-bottom: 1px solid #e5e8ef;
+      vertical-align: top;
     }
+
     th { background: #f5f6fa; }
+
+    .result-form {
+      min-width: 190px;
+    }
+
+    .result-form select,
+    .result-form textarea {
+      width: 100%;
+    }
+
+    .result-form button {
+      width: 100%;
+    }
   </style>
 </head>
+
 <body>
 
 <header>
@@ -63,6 +107,7 @@
 </header>
 
 <main>
+
   <section>
     <h1 id="welcome">Welcome, Interviewer</h1>
     <p id="profile">Loading profile...</p>
@@ -87,6 +132,7 @@
 
   <section>
     <h2>My Assigned Interviews</h2>
+
     <div class="table-wrap">
       <table>
         <thead>
@@ -96,21 +142,28 @@
             <th>Interview Date</th>
             <th>Status</th>
             <th>Result</th>
+            <th>Feedback</th>
+            <th>Record Result</th>
           </tr>
         </thead>
+
         <tbody id="bookingRows">
-          <tr><td colspan="5">Loading interviews...</td></tr>
+          <tr>
+            <td colspan="7">Loading interviews...</td>
+          </tr>
         </tbody>
       </table>
     </div>
+
     <p id="bookingMessage" class="message"></p>
   </section>
+
 </main>
 
-<!-- Connect to the shared API helper -->
 <script src="api.js"></script>
 
 <script>
+
 async function loadProfile() {
   try {
     const user = await getProfile();
@@ -133,51 +186,114 @@ async function loadProfile() {
   }
 }
 
+
 async function loadBookings() {
   const tbody = document.getElementById("bookingRows");
   const message = document.getElementById("bookingMessage");
 
   try {
     const bookings = await apiRequest("/me/bookings");
+
     tbody.replaceChildren();
     message.textContent = "";
 
     if (!Array.isArray(bookings) || bookings.length === 0) {
       tbody.innerHTML =
-        '<tr><td colspan="5">No assigned interviews yet.</td></tr>';
+        '<tr><td colspan="7">No assigned interviews yet.</td></tr>';
       return;
     }
 
     bookings.forEach(item => {
       const tr = document.createElement("tr");
 
-      [
+      const values = [
         item.booking_id,
         item.student_name,
         item.start_at,
         item.status,
-        item.result || "Pending"
-      ].forEach(value => {
+        item.result || "Pending",
+        item.feedback || "Not available"
+      ];
+
+      values.forEach(value => {
         const td = document.createElement("td");
         td.textContent = value ?? "-";
         tr.appendChild(td);
       });
 
+      const actionCell = document.createElement("td");
+
+      if (item.status === "Booked" && !item.result) {
+        const form = document.createElement("div");
+        form.className = "result-form";
+
+        const resultSelect = document.createElement("select");
+
+        ["Pass", "Fail", "Retake"].forEach(result => {
+          const option = document.createElement("option");
+          option.value = result;
+          option.textContent = result;
+          resultSelect.appendChild(option);
+        });
+
+        const feedbackInput = document.createElement("textarea");
+        feedbackInput.placeholder = "Enter interview feedback...";
+
+        const saveButton = document.createElement("button");
+        saveButton.textContent = "Submit Result";
+
+        saveButton.onclick = async () => {
+          saveButton.disabled = true;
+          saveButton.textContent = "Saving...";
+
+          try {
+            await recordInterviewResult(
+              item.booking_id,
+              resultSelect.value,
+              feedbackInput.value
+            );
+
+            alert("Interview result saved successfully!");
+
+            await loadBookings();
+
+          } catch (error) {
+            alert("Could not save result: " + error.message);
+            saveButton.disabled = false;
+            saveButton.textContent = "Submit Result";
+          }
+        };
+
+        form.appendChild(resultSelect);
+        form.appendChild(feedbackInput);
+        form.appendChild(saveButton);
+
+        actionCell.appendChild(form);
+
+      } else {
+        actionCell.textContent = "Result recorded";
+      }
+
+      tr.appendChild(actionCell);
       tbody.appendChild(tr);
     });
 
   } catch (error) {
     tbody.innerHTML =
-      '<tr><td colspan="5">Could not load interviews.</td></tr>';
+      '<tr><td colspan="7">Could not load interviews.</td></tr>';
 
     message.textContent = error.message;
   }
 }
 
+
 async function createSlot() {
   const date = document.getElementById("slotDate").value;
   const time = document.getElementById("slotTime").value;
-  const duration = Number(document.getElementById("duration").value);
+  const duration = Number(
+    document.getElementById("duration").value
+  );
+
   const message = document.getElementById("slotMessage");
 
   if (!date || !time || !duration) {
@@ -200,7 +316,8 @@ async function createSlot() {
       })
     });
 
-    message.textContent = "Availability added successfully!";
+    message.textContent =
+      "Availability added successfully!";
 
     document.getElementById("slotDate").value = "";
     document.getElementById("slotTime").value = "";
@@ -211,9 +328,10 @@ async function createSlot() {
   }
 }
 
-// Load interviewer information and assigned bookings
+
 loadProfile();
 loadBookings();
+
 </script>
 
 </body>
