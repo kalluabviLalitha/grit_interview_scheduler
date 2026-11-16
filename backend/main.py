@@ -1,6 +1,4 @@
 
-import os
-import secrets
 from uuid import uuid4
 from typing import Optional
 
@@ -13,7 +11,6 @@ from database import get_connection, init_db
 
 from auth import (
     verify_password,
-    hash_password,
     create_access_token,
     get_current_user,
     require_role,
@@ -23,12 +20,14 @@ from auth import (
 app = FastAPI(
     title="GRIT Interview Scheduler",
     description="Student interview scheduling API",
-    version="2.0.0",
+    version="2.1.0",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://grit-interview-frontend.onrender.com"
+    ],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -71,13 +70,6 @@ class LoginInput(BaseModel):
     password: str
 
 
-class AdminSetupInput(BaseModel):
-    name: str
-    email: str
-    password: str
-    setup_key: str
-
-
 # ---------- Helpers ----------
 
 def fetch_all(query, params=()):
@@ -85,77 +77,6 @@ def fetch_all(query, params=()):
     try:
         rows = connection.execute(query, params).fetchall()
         return [dict(row) for row in rows]
-    finally:
-        connection.close()
-
-
-# ---------- One-time admin setup ----------
-
-@app.post("/setup/admin")
-def setup_admin(data: AdminSetupInput):
-    setup_key = os.getenv("ADMIN_SETUP_KEY")
-
-    if not setup_key:
-        raise HTTPException(
-            503,
-            "Admin setup is not configured",
-        )
-
-    if not secrets.compare_digest(data.setup_key, setup_key):
-        raise HTTPException(
-            403,
-            "Invalid setup key",
-        )
-
-    if len(data.password) < 12:
-        raise HTTPException(
-            400,
-            "Admin password must contain at least 12 characters",
-        )
-
-    connection = get_connection()
-
-    try:
-        existing_admin = connection.execute(
-            "SELECT id FROM users WHERE role = 'admin' LIMIT 1"
-        ).fetchone()
-
-        if existing_admin:
-            raise HTTPException(
-                409,
-                "An admin account already exists",
-            )
-
-        user_id = "USR-" + uuid4().hex[:8].upper()
-
-        connection.execute(
-            """
-            INSERT INTO users
-            (id, name, email, password_hash, role, active)
-            VALUES (%s, %s, %s, %s, 'admin', 1)
-            """,
-            (
-                user_id,
-                data.name.strip(),
-                data.email.lower().strip(),
-                hash_password(data.password),
-            ),
-        )
-
-        connection.commit()
-
-        return {
-            "message": "Admin account created successfully",
-            "email": data.email.lower().strip(),
-        }
-
-    except psycopg.IntegrityError:
-        connection.rollback()
-        raise HTTPException(
-            409,
-            "An account with this email already exists",
-        )
-
     finally:
         connection.close()
 
