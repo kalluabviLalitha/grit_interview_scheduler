@@ -1,18 +1,24 @@
 
+import os
+import secrets
+from uuid import uuid4
+from typing import Optional
+
+import psycopg
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
+
 from database import get_connection, init_db
-from uuid import uuid4
-import psycopg
 
 from auth import (
     verify_password,
+    hash_password,
     create_access_token,
     get_current_user,
     require_role,
 )
+
 
 app = FastAPI(
     title="GRIT Interview Scheduler",
@@ -65,6 +71,13 @@ class LoginInput(BaseModel):
     password: str
 
 
+class AdminSetupInput(BaseModel):
+    name: str
+    email: str
+    password: str
+    setup_key: str
+
+
 # ---------- Helpers ----------
 
 def fetch_all(query, params=()):
@@ -76,11 +89,84 @@ def fetch_all(query, params=()):
         connection.close()
 
 
+# ---------- One-time admin setup ----------
+
+@app.post("/setup/admin")
+def setup_admin(data: AdminSetupInput):
+    setup_key = os.getenv("ADMIN_SETUP_KEY")
+
+    if not setup_key:
+        raise HTTPException(
+            503,
+            "Admin setup is not configured",
+        )
+
+    if not secrets.compare_digest(data.setup_key, setup_key):
+        raise HTTPException(
+            403,
+            "Invalid setup key",
+        )
+
+    if len(data.password) < 12:
+        raise HTTPException(
+            400,
+            "Admin password must contain at least 12 characters",
+        )
+
+    connection = get_connection()
+
+    try:
+        existing_admin = connection.execute(
+            "SELECT id FROM users WHERE role = 'admin' LIMIT 1"
+        ).fetchone()
+
+        if existing_admin:
+            raise HTTPException(
+                409,
+                "An admin account already exists",
+            )
+
+        user_id = "USR-" + uuid4().hex[:8].upper()
+
+        connection.execute(
+            """
+            INSERT INTO users
+            (id, name, email, password_hash, role, active)
+            VALUES (%s, %s, %s, %s, 'admin', 1)
+            """,
+            (
+                user_id,
+                data.name.strip(),
+                data.email.lower().strip(),
+                hash_password(data.password),
+            ),
+        )
+
+        connection.commit()
+
+        return {
+            "message": "Admin account created successfully",
+            "email": data.email.lower().strip(),
+        }
+
+    except psycopg.IntegrityError:
+        connection.rollback()
+        raise HTTPException(
+            409,
+            "An account with this email already exists",
+        )
+
+    finally:
+        connection.close()
+
+
 # ---------- Home and health ----------
 
 @app.get("/")
 def home():
-    return {"message": "Welcome to GRIT Interview Scheduler API"}
+    return {
+        "message": "Welcome to GRIT Interview Scheduler API"
+    }
 
 
 @app.get("/health")
@@ -88,7 +174,7 @@ def health():
     return {"status": "healthy"}
 
 
-# ---------- Students: admin only ----------
+# ---------- Students ----------
 
 @app.post("/students")
 def create_student(
@@ -96,6 +182,7 @@ def create_student(
     user=Depends(require_role("admin")),
 ):
     connection = get_connection()
+
     try:
         student_id = "STU-" + uuid4().hex[:8].upper()
 
@@ -111,6 +198,7 @@ def create_student(
                 int(data.eligible),
             ),
         )
+
         connection.commit()
 
         return {
@@ -128,10 +216,12 @@ def create_student(
 
 @app.get("/students")
 def get_students(user=Depends(require_role("admin"))):
-    return fetch_all("SELECT * FROM students ORDER BY name")
+    return fetch_all(
+        "SELECT * FROM students ORDER BY name"
+    )
 
 
-# ---------- Interviewers: admin only ----------
+# ---------- Interviewers ----------
 
 @app.post("/interviewers")
 def create_interviewer(
@@ -139,6 +229,7 @@ def create_interviewer(
     user=Depends(require_role("admin")),
 ):
     connection = get_connection()
+
     try:
         interviewer_id = "INT-" + uuid4().hex[:8].upper()
 
@@ -153,6 +244,7 @@ def create_interviewer(
                 data.email.lower().strip(),
             ),
         )
+
         connection.commit()
 
         return {
@@ -170,7 +262,9 @@ def create_interviewer(
 
 @app.get("/interviewers")
 def get_interviewers(user=Depends(require_role("admin"))):
-    return fetch_all("SELECT * FROM interviewers ORDER BY name")
+    return fetch_all(
+        "SELECT * FROM interviewers ORDER BY name"
+    )
 
 
 # ---------- Interview slots ----------
@@ -202,6 +296,7 @@ def create_slot(
         )
 
     connection = get_connection()
+
     try:
         interviewer = connection.execute(
             "SELECT id FROM interviewers WHERE id = %s",
@@ -226,6 +321,7 @@ def create_slot(
                 data.duration,
             ),
         )
+
         connection.commit()
 
         return {
@@ -247,6 +343,7 @@ def get_slots(
     user=Depends(get_current_user),
 ):
     connection = get_connection()
+
     try:
         if user["role"] == "student":
             rows = connection.execute(
@@ -346,7 +443,10 @@ def create_booking(
                 )
 
             if not student["eligible"]:
-                raise HTTPException(403, "Student is not eligible")
+                raise HTTPException(
+                    403,
+                    "Student is not eligible",
+                )
 
             existing = connection.execute(
                 """
@@ -502,7 +602,7 @@ def cancel_booking(
             )
 
         return {
-            "message": "Booking cancelled successfully",
+            "message": "Booking cancelled successfully"
         }
 
     finally:
