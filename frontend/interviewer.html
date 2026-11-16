@@ -56,6 +56,7 @@
   </style>
 </head>
 <body>
+
 <header>
   <strong>GRIT INTERVIEW PORTAL</strong>
   <button class="danger" onclick="logout()">Logout</button>
@@ -106,48 +107,13 @@
   </section>
 </main>
 
+<!-- Connect to the shared API helper -->
+<script src="api.js"></script>
+
 <script>
-const API = "http://127.0.0.1:8000";
-
-function getToken() {
-  return sessionStorage.getItem("grit_token");
-}
-
-function logout() {
-  sessionStorage.removeItem("grit_token");
-  sessionStorage.removeItem("grit_user");
-  window.location.href = "login.html";
-}
-
-async function apiRequest(path, options = {}) {
-  const token = getToken();
-
-  if (!token) {
-    window.location.href = "login.html";
-    throw new Error("Please log in again.");
-  }
-
-  const response = await fetch(API + path, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + token,
-      ...(options.headers || {})
-    }
-  });
-
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(data.detail || "Request failed: " + response.status);
-  }
-
-  return data;
-}
-
 async function loadProfile() {
   try {
-    const user = await apiRequest("/auth/me");
+    const user = await getProfile();
 
     if (user.role !== "interviewer") {
       alert("Please log in with an interviewer account.");
@@ -157,19 +123,24 @@ async function loadProfile() {
 
     document.getElementById("welcome").textContent =
       "Welcome, " + user.name;
+
     document.getElementById("profile").textContent =
       user.email + " | INTERVIEWER";
+
   } catch (error) {
-    document.getElementById("profile").textContent = error.message;
+    document.getElementById("profile").textContent =
+      error.message;
   }
 }
 
 async function loadBookings() {
   const tbody = document.getElementById("bookingRows");
+  const message = document.getElementById("bookingMessage");
 
   try {
     const bookings = await apiRequest("/me/bookings");
     tbody.replaceChildren();
+    message.textContent = "";
 
     if (!Array.isArray(bookings) || bookings.length === 0) {
       tbody.innerHTML =
@@ -185,7 +156,7 @@ async function loadBookings() {
         item.student_name,
         item.start_at,
         item.status,
-        item.result || "Not recorded"
+        item.result || "Pending"
       ].forEach(value => {
         const td = document.createElement("td");
         td.textContent = value ?? "-";
@@ -194,11 +165,12 @@ async function loadBookings() {
 
       tbody.appendChild(tr);
     });
+
   } catch (error) {
     tbody.innerHTML =
       '<tr><td colspan="5">Could not load interviews.</td></tr>';
-    document.getElementById("bookingMessage").textContent =
-      error.message;
+
+    message.textContent = error.message;
   }
 }
 
@@ -209,14 +181,15 @@ async function createSlot() {
   const message = document.getElementById("slotMessage");
 
   if (!date || !time || !duration) {
-    message.textContent = "Please enter date, time and duration.";
+    message.textContent =
+      "Please enter date, time and duration.";
     return;
   }
 
   const startAt = date + "T" + time + ":00";
 
   try {
-    const user = await apiRequest("/auth/me");
+    const user = await getProfile();
 
     await apiRequest("/slots", {
       method: "POST",
@@ -228,16 +201,20 @@ async function createSlot() {
     });
 
     message.textContent = "Availability added successfully!";
+
     document.getElementById("slotDate").value = "";
     document.getElementById("slotTime").value = "";
+
   } catch (error) {
-    message.textContent = "Could not add slot: " + error.message;
+    message.textContent =
+      "Could not add slot: " + error.message;
   }
 }
 
+// Load interviewer information and assigned bookings
 loadProfile();
 loadBookings();
 </script>
+
 </body>
 </html>
-
